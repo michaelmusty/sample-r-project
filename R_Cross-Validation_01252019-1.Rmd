@@ -1,0 +1,267 @@
+---
+title: "R Cross-Validation"
+author: "Jianjun Hua, Statistical Consultant, Information, Technology & Consulting"
+date: "`r format(Sys.time(), '%d %B %Y')`"
+output:
+  html_document:
+    df_print: paged
+    number_sections: yes
+    toc: yes
+    toc_float:
+      collapased: yes
+      smooth_scroll: yes
+  ioslides_presentation: default
+  pdf_document:
+    toc: yes
+  slidy_presentation:
+    footer: Jianjun Hua, Information, Technology & Consulting
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE)
+```
+
+# Jianjun's Intruduction
+
+*  Statistical Consultant
+*  Take questions about Statistics & Statistical Software Packages (R, SAS, Stata, SPSS)
+*  Email: jianjun.hua@dartmouth.edu
+*  [Research guides](http://researchguides.dartmouth.edu/statapp_koujue)
+    +  Or Google **R koujue**
+*  Subscribe to R users' listserv (ruserg@listserv.dartmouth.edu)? Please send me an email!
+
+
+# Bias-Variance 
+
+When discussing prediction models, prediction errors can be decomposed into two main subcomponents: "bias" and "variance". There is a trade-off between a model's ability to minimize bias and variance. Understanding these two types of error can help you diagnose model results and avoid the mistake of over- or under-fitting.
+
+
+## Conceptual Definition
+
+**Bias** is the difference between the expected (or average) prediction of your model and the correct value which your are trying to predict (the truth).
+
+**Variance** is how much the predictions for a given point vary between different realizations of the model (or around its average).
+
+Bias and variance together gives prediction error.
+
+## Graphical Definition
+
+A **bulls-eye diagram** can be used to graphically visualize bias and variance. 
+
+Four different cases representing combinations of both high and low bias and variance are plotted as follows:
+
+![](./Bias-Variance1.png)
+
+# Overfitting and Underfitting
+
+At its root, dealing with bias and variance is really about dealing with over- and under-fitting. Bias is reduced and variance is increased in relation to model complexity. As more and more parameters are added to a model, the complexity of the model rises and variance becomes primary concern while bias steadily falls. For example, as more polynomial terms are added to a linear regression, the greater the resulting model's complexity will be. 
+
+![](./Bias-Variance2.png)
+
+
+Understanding bias and variance is critical for understanding the behavior of prediction models, but in general what you really care about is overall error, not the specific decomposition. The sweet spot for any model is the level of complexity at which the increase in bias is equivalent to the reduction in variance. 
+
+If your model complexity exceeds this sweet spot, you are in effect over-fitting your model; while if your model complexity falls short of the sweet spot, you are under-fitting the model. In practice, **there is not an analytical way to find this location**. Instead you must use an accurate measure of prediction error and explore differing levels of model complexity and then choose the complexity level that minimizes the overall error. Generally resampling based measures such as cross-validation should be preferred over theoretical measures such as Aikake's Information Criteria.
+
+![](./UnderfitAndOverfit1.png)
+
+As the graph shows that the linear (degree = 1) fit is an under-fit because
+
+1.     It does not take into account all the information in the data (high bias), but
+2.     It will not change much in the face of a new set of points from the same source (low variance).
+
+On the other hand, the high degree polynomial (degree = 20) fit, is an over-fit because
+
+1.     The curve fits the given data points very well (low bias), but
+2.     It will collapse in the face of subsets or new sets of points from the same source because it intimately takes all the data into account, thus losing generality (high variance).
+
+The ideal fit, naturally, is one that captures the regularities in the data enough to be reasonably accurate and generalizable to a different set of points from the same source. Unfortunately, in almost every practical setting, it is nearly impossible to do both simultaneously. Therefore, to achieve good performance on data outside the training set, a tradeoff must be made. This is referred to as the **bias-variace trade-off**.
+
+
+# Training Error vs Test Error
+
+   Model fit statistics are not a good guide to how well a model will predict and find the "sweet spot" of bias-variance trade-off: high $R^2$ does not necessarily mean a good model. It is easy to over-fit the data by including too many degrees of freedom and so inflate $R^2$ and other fit statistics.    One way to measure the predictive ability of a model is to test it on a set of data not used in estimation. 
+
+To better understand how cross-validation works, you need to understand the difference between **training error** and **test error**.
+
+*    Training error can be easily calculated by fitting the model to the observations used in its training. 
+
+*    Test error is the average error that results from using the model trained from the training set to predict the response on a new observation, one that not used in training set.
+
+*    Training error rate is often quite different from the test error rate and dramatically underestimate the latter.
+
+
+![Training vs Test-Set Performance](./PredictionErrorAndModelComplexity.png)
+
+
+## Problems with training and testing on the same data
+
+*    Goal is to estimate likely performance of your model on **out-of-sample data**
+*    But, maximizing training accuracy rewards **overly complex models** that won't necessarily generalize
+*    Unnecessarily complex models **overfit** the training data. "Overfitted models" have learned the noise in the data rather than the signal.
+     
+
+# Cross-validation
+
+**Cross-validation** is one of commonly used *resampling* methods and primarily a way of measuring the predictive performance of statistical model. It refits a model of interest to samples from the training set, in order to obtain additional information about the fitted model and provide estimates of test-set prediction error, and the standard deviation and bias of parameter estimates. 
+
+
+## Types of Cross-validation
+
+*    The **train/test split** (or **validation set**) method is the simplest kind of cross-validation. The data set is separated into two sets, called the training set and the test set. Your model is buildt using the training set only. Then you use the model to predict the output values for the data in the test set (it has never seen these output values before). The validation errors are used to evaluate the model. 
+
+    + However, it provides a **high-variance estimate** of out-of-sample accuracy (meaning that it can change a lot depending upon which observations happen to be in the training set vs the test set) while    **K-fold cross-validation** largely overcomes this limitation by repeating the train/test split process multiple times in a systematic way and averaging the results.
+    
+    + But, train/test split approach is still useful because of its **flexibility and speed**
+
+    + There is no general rule as to what percentages best but people generally use between twenty and forty percent of their data for testing (validation). 
+
+    + Training accuracy rises as model complexity increases
+    + Test (validation) accuracy penalizes models that are too complex or not complex enough
+
+    + The test error is typically assessed using MSE in the case of a quantitative response and misclassification rate in the case of a qualitative (discrete) response.
+
+*    **K-fold cross-validation** is one way to improve over the train/test split method. The data set is divided into k subsets, and the **train/test split** method is repeated k times. Each time, one of the k subsets is used as the test set and the other k-1 subsets are put together to form a training set. Then the **average error across all k trials** is computed. 
+    + The advantage of this method is that it matters less how the data gets divided. Every data point gets to be in a test set exactly once, and gets to be in a training set k-1 times. The variance of the resulting estimate is reduced as k is increased. 
+    + The disadvantage of this method is that the training algorithm has to be rerun from scratch k times, which means it takes k times as much computation to make an evaluation. 
+    + A variant of this method is to randomly divide the data into a test and training set k different times. The advantage of doing this is that you can independently choose how large each test set is and how many trials you average over.
+    
+*    **Leave-one-out cross-validation** is K-fold cross-validation taken to its logical extreme, with K equal to N, the number of data points in the set. That means that N separate times, your model is trained on all the data except for one point and a prediction is made for that point. As before the **average error** is computed and used to evaluate the model. 
+    + The evaluation given by leave-one-out cross validation (LOOCV) error is good, but at first pass it seems very expensive to compute. 
+    + Fortunately, mathematically, there is a simple formula to calculate LOOCV error for least squares model, which can makes LOO predictions just as easily as they make regular predictions. That means computing the LOOCV error takes no more time than computing the residual error and it is a much better way to evaluate models. 
+
+## K-fold Cross-validation in detail
+
+### Cross-Validation for Regression Problems
+
+1.  Split the dataset into K **equal** partitions (or "folds") (K = 5 here). Let the K parts be $C_1$, $C_2$, . . . $C_K$, where $C_k$ denotes the indices of the observations in part k. There are $n_k$ observations in part k: if N is a multiple of K, then $n_k = n/K$. Use the first fold as the **test set** and the union of the other folds as the **training set**.
+
+![](./Cross-Validation.png)
+
+2.  Calculate **test accuracy** (Mean Square Error or MSE).
+3.  Repeat steps 1 and 2 K times, using a **different fold** as the test set each time.
+4.  Use the **average test accuracy** as the estimate of out-of-sample accuracy.
+Compute
+
+![](./cvmse.png)
+
+
+5.  Since each training set is only $(K-1)/K$ as big as the original training set, the estimates of prediction error will typically be biased upward. 
+
+
+6.  This bias is minimized when K = n (LOOCV), but this
+estimate has high variance, as noted earlier.
+
+![](./loocvmse1.png)
+
+Where $\hat{y}_{i}$ is the ith fitted value from the original least squares fit, and $h_{i}$ is the leverage (diagonal element of the hat matrix, which is the operator matrix that produces the least squares fit). This is also known as the self influence. It's a measure of how much observation i contributes to its own fit. $h_{i}$ ranges between 0 and 1. If $h_{i}$ is close to 1, in other words, observation i really contributes a lot to its own fit so that 1 minus $h_{i}$ is small that will inflate that particular residual. It's like a magic formula that tells you that you can get your cross-validated fit by the simple modification of the residuals from the full fit. This is like the ordinary MSE, except the ith residual is divided by $1-h_{i}$.
+
+
+7.  LOOCV sometimes useful, but typically doesn't shake up
+the data enough. The estimates from each fold are highly
+correlated and hence their average can have high variance.
+
+8.  K = 5 or 10 provides a good compromise for this
+bias-variance tradeoff.
+
+
+### Cross-Validation for Classification Problems
+
+*    Follow the same procedure except at each iteration compute
+
+![](./cvclassificationerror.png)
+
+
+
+# Demo of Cross-Validation in R
+
+```{r message=FALSE, echo=FALSE, results = 'hide'}
+install.packages("ISLR", dependencies=TRUE, repos='http://cran.rstudio.com/')
+install.packages("boot", dependencies=TRUE, repos='http://cran.rstudio.com/')
+```
+
+```{r message=FALSE, echo=TRUE}
+
+library(ISLR)
+library(boot)
+plot(mpg~horsepower,data=Auto)
+
+## The Validation Set (Train/Test Split) Approach
+set.seed(88)
+attach(Auto)
+train<-sample(392,196)
+cvv.error<-rep(0,10)
+degree <- 1:10
+for(d in degree){
+  glm.fit <- glm(mpg~poly(horsepower,d),data=Auto, subset=train)
+  cvv.error[d]<-mean((mpg-predict(glm.fit,Auto))[-train]^2)
+}
+plot(degree,cvv.error,type="b", col="black", xlab = "Degree of Polynomial",
+     ylab="CV Error", ylim=c(18,25))
+which(cvv.error==min(cvv.error))
+
+
+## LOOCV 
+
+glm.fit<-glm(mpg~horsepower, data=Auto)
+cv.glm(Auto,glm.fit)$delta # "delta" is the cross-validation prediction error
+
+## the first # is the raw cross-validation result; 
+## and the second one is a bias-corrected version of it.
+
+## Define a LOOCV function
+loocv <- function(fit){
+  h<-lm.influence(fit)$h
+  mean((residuals(fit)/(1-h))^2)
+}
+
+loocv(glm.fit)
+
+cv.error<-rep(0,10)
+for(d in degree){
+  glm.fit <- glm(mpg~poly(horsepower,d),data=Auto)
+  cv.error[d]<-loocv(glm.fit)
+}
+lines(degree, cv.error, type="b", col="blue")
+which(cv.error==min(cv.error))
+
+## 10-Fold Cross-Validation
+cv.error10<-rep(0,10)
+for(d in degree){
+  glm.fit <- glm(mpg~poly(horsepower,d),data=Auto)
+  cv.error10[d]<-cv.glm(Auto,glm.fit, K=10)$delta[1]
+}
+lines(degree,cv.error10,type="b", col="red")
+legend(7, 24, c("Validation-Set", "LOOCV", "10-Fold CV"), lty=c(1,1,1), 
+       lwd = c(2.5, 2.5,2.5), col = c("black", "blue", "red"))
+which(cv.error10==min(cv.error10))
+
+```
+
+
+# Online Resources
+
+[The Comprehensive R Archive Network (CRAN)](http://www.r-project.org/)
+
+[Google custom search that is focused on R-specific websites](http://rseek.org)
+
+[UCLA Academic Technology Services (ATS)](http://www.ats.ucla.edu/stat/r/)
+
+[Q & A website: Stack Overflow site](http://stackoverflow.com/)
+
+[Statistics-Oriented site](http://stats.stackexchange.com/)
+
+[The Elements of Statistical Learning](https://web.stanford.edu/~hastie/Papers/ESLII.pdf)
+
+## Questions
+
+Questions?
+
+## Post-workshop Survey
+
+How do you feel about this workshop? 
+
+Do you want to learn more?
+
+>- [One-minute survey](https://www.surveymonkey.com/r/JM6S7YQ)
+
